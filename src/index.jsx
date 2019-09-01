@@ -74,7 +74,7 @@ class App extends React.Component {
 
   createCharacter(name, state) {
     const id = state.ids;
-    const newCharacter = { id, name, action: actions.none };
+    const newCharacter = { id, name, action: actions.none, hunger: 0 };
     const newCharacters = { ...state.characters };
     newCharacters[id] = newCharacter;
 
@@ -115,6 +115,7 @@ class App extends React.Component {
     const characterDiv = character => (
       <div key={character.id}>
         <div>Name: {character.name}</div>
+        <div>Hunger: {character.hunger}</div>
         <label>Action</label>
         <select value={character.action.id} onChange={ev => {
           updateCharacter(character, { action: actions[ev.currentTarget.value] });
@@ -194,7 +195,7 @@ function tickState(state, tickTime) {
     return gain;
   }
 
-  const newCharacters = { ...characters };
+  const newCharacters = tickCharacters(characters);
   const newResources = { ...resources };
 
   for (let character of Object.values(newCharacters)) {
@@ -234,6 +235,25 @@ function tickState(state, tickTime) {
     resources: newResources,
     tickProgress: 0
   }
+}
+
+function tickCharacters(characters) {
+  const newCharacters = { ...characters };
+
+  for (let character of Object.values(characters)) {
+    const newCharacter = { ...character };
+    const hunger = newCharacter.hunger + 1;
+
+    if (hunger >= 6) {
+      
+      delete newCharacters[character.id];
+    } else {
+
+      newCharacter.hunger = hunger;
+      newCharacters[character.id] = newCharacter;
+    }
+  }
+  return newCharacters;
 }
 
 ReactDOM.render(<App />, document.getElementById('root'));
