@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 
 import './index.css';
 
-const tickThreshold = 3000;
+const tickThreshold = 1000;
 
 const resourceList = {
   iron: { name: 'Iron' },
@@ -162,64 +162,11 @@ class App extends React.Component {
   }
 
   tick(tickTime) {
-    const { characters, lastTickTime, resources } = this.state;
+    const { lastTickTime } = this.state;
 
     const progress = (tickTime - lastTickTime) / tickThreshold;
     if (progress >= 1) {
-
-      const gainOf = arr => {
-        if (!arr) {
-          return 0;
-        }
-
-        let gain = 0;
-        for (let chance of arr) {
-          if (Math.random() < chance) {
-            gain++;
-          }
-        }
-        return gain;
-      }
-
-      const newCharacters = { ...characters };
-      const newResources = { ...resources };
-
-      for (let character of Object.values(newCharacters)) {
-        for (let resource of Object.keys(resourceList)) {
-          const { useResources } = character.action;
-          let canPerform = true;
-
-          if (useResources) {
-            for (let resource of Object.keys(resourceList)) {
-              const amount = newResources[resource] ? newResources[resource] : 0;
-              const required = useResources[resource] ? useResources[resource] : 0;
-              if (required > amount) {
-                canPerform = false;
-              }
-            }
-          }
-
-          if (canPerform) {
-            const amount = gainOf(character.action.resources[resource]);
-            const usedUp = useResources ? useResources[resource] : 0;
-            const previous = newResources[resource];
-            const newAmount = amount + (previous ? previous : 0) - (usedUp ? usedUp : 0);
-            newResources[resource] = newAmount;
-          } else {
-            const newCharacter = { ...character };
-            newCharacter.action = actions.none;
-            newCharacters[character.id] = newCharacter;
-          }
-        }
-      }
-
-      this.setState({
-        day: this.state.day + 1,
-        lastTickTime: Math.round(tickTime / 1000) * 1000,
-        characters: newCharacters,
-        resources: newResources,
-        tickProgress: 0
-      })
+      this.setState(tickState(this.state, tickTime));
     } else {
       this.setState({
         tickProgress: progress
@@ -227,6 +174,65 @@ class App extends React.Component {
     }
 
     requestAnimationFrame(this.tick.bind(this));
+  }
+}
+
+function tickState(state, tickTime) {
+  const { characters, resources } = state;
+
+  const gainOf = arr => {
+    if (!arr) {
+      return 0;
+    }
+
+    let gain = 0;
+    for (let chance of arr) {
+      if (Math.random() < chance) {
+        gain++;
+      }
+    }
+    return gain;
+  }
+
+  const newCharacters = { ...characters };
+  const newResources = { ...resources };
+
+  for (let character of Object.values(newCharacters)) {
+    for (let resource of Object.keys(resourceList)) {
+      const { useResources } = character.action;
+      let canPerform = true;
+
+      if (useResources) {
+        for (let resource of Object.keys(resourceList)) {
+          const amount = newResources[resource] ? newResources[resource] : 0;
+          const required = useResources[resource] ? useResources[resource] : 0;
+          if (required > amount) {
+            canPerform = false;
+          }
+        }
+      }
+
+      if (canPerform) {
+        const amount = gainOf(character.action.resources[resource]);
+        const usedUp = useResources ? useResources[resource] : 0;
+        const previous = newResources[resource];
+        const newAmount = amount + (previous ? previous : 0) - (usedUp ? usedUp : 0);
+        newResources[resource] = newAmount;
+      } else {
+        const newCharacter = { ...character };
+        newCharacter.action = actions.none;
+        newCharacters[character.id] = newCharacter;
+      }
+    }
+  }
+
+  return {
+    ...state,
+    day: state.day + 1,
+    lastTickTime: Math.round(tickTime / 1000) * 1000,
+    characters: newCharacters,
+    resources: newResources,
+    tickProgress: 0
   }
 }
 
