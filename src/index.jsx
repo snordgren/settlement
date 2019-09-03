@@ -1,20 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+import { tickCharacters } from './character';
+import { addLogMessage } from './log';
+import { resourceList } from './resources';
+import { tickThreshold } from './settings';
+
 import './index.css';
-
-const tickThreshold = 1000;
-
-const resourceList = {
-  iron: { name: 'Iron' },
-  potatoes: { name: 'Potatoes' },
-  rice: { name: 'Rice' },
-  rockKnife: { name: 'Rock Knife' },
-  rocks: { name: 'Rocks' },
-  sticks: { name: 'Sticks' },
-  stone: { name: 'Stone' },
-  wood: { name: 'Wood' }
-};
 
 const actions = {
   none: {
@@ -27,9 +19,8 @@ const actions = {
     name: 'Gather',
     resources: {
       iron: [0.1],
-      rice: [0.4],
       rocks: [0.5],
-      potatoes: [0.7, 0.3],
+      potatoes: [0.8, 0.4],
       sticks: [0.3]
     }
   },
@@ -66,6 +57,7 @@ class App extends React.Component {
         sawmills: 0
       },
       characters: {},
+      log: [],
       resources
     };
 
@@ -115,7 +107,7 @@ class App extends React.Component {
     const characterDiv = character => (
       <div key={character.id}>
         <div>Name: {character.name}</div>
-        <div>Hunger: {character.hunger}</div>
+        {character.hunger != 0 && <div>Hunger: {character.hunger}</div>}
         <label>Action</label>
         <select value={character.action.id} onChange={ev => {
           updateCharacter(character, { action: actions[ev.currentTarget.value] });
@@ -158,6 +150,11 @@ class App extends React.Component {
           {Object.entries(resourceList)
             .map(([k, v]) => resourceDiv(resources[k], v.name))}
         </div>
+
+        <div>
+          <h2>Log</h2>
+          {this.state.log.slice(Math.max(this.state.log.length - 16, 0))}
+        </div>
       </div>
     );
   }
@@ -179,7 +176,8 @@ class App extends React.Component {
 }
 
 function tickState(state, tickTime) {
-  const { characters, resources } = state;
+  state = tickCharacters(state);
+  const { characters, day, log, resources } = state;
 
   const gainOf = arr => {
     if (!arr) {
@@ -195,7 +193,8 @@ function tickState(state, tickTime) {
     return gain;
   }
 
-  const newCharacters = tickCharacters(characters);
+  const newCharacters = { ...characters };
+  const newLog = [...log];
   const newResources = { ...resources };
 
   for (let character of Object.values(newCharacters)) {
@@ -215,10 +214,16 @@ function tickState(state, tickTime) {
 
       if (canPerform) {
         const amount = gainOf(character.action.resources[resource]);
-        const usedUp = useResources ? useResources[resource] : 0;
-        const previous = newResources[resource];
-        const newAmount = amount + (previous ? previous : 0) - (usedUp ? usedUp : 0);
-        newResources[resource] = newAmount;
+
+        if (amount > 0) {
+          const usedUp = useResources ? useResources[resource] : 0;
+          const previous = newResources[resource];
+          const newAmount = amount + (previous ? previous : 0) - (usedUp ? usedUp : 0);
+          newResources[resource] = newAmount;
+
+          addLogMessage(day, newLog, `${character.name} created ` + 
+            `${amount} ${resourceList[resource].name}`);
+        }
       } else {
         const newCharacter = { ...character };
         newCharacter.action = actions.none;
@@ -232,28 +237,10 @@ function tickState(state, tickTime) {
     day: state.day + 1,
     lastTickTime: Math.round(tickTime / 1000) * 1000,
     characters: newCharacters,
+    log: newLog,
     resources: newResources,
     tickProgress: 0
   }
-}
-
-function tickCharacters(characters) {
-  const newCharacters = { ...characters };
-
-  for (let character of Object.values(characters)) {
-    const newCharacter = { ...character };
-    const hunger = newCharacter.hunger + 1;
-
-    if (hunger >= 6) {
-      
-      delete newCharacters[character.id];
-    } else {
-
-      newCharacter.hunger = hunger;
-      newCharacters[character.id] = newCharacter;
-    }
-  }
-  return newCharacters;
 }
 
 ReactDOM.render(<App />, document.getElementById('root'));
